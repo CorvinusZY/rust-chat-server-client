@@ -1,14 +1,16 @@
-use std::env;
-use tokio_tungstenite::connect_async;
+use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
-use tokio_tungstenite::tungstenite::Message;
-use serde::{Serialize, Deserialize};
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-use url::Url;
+use serde::{Deserialize, Serialize};
+use std::env;
 use tokio::io::{self, AsyncBufReadExt}; // For reading input from stdin
+use tokio_tungstenite::connect_async;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::Message;
+use url::Url;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct IncomingMessage {
+    sent_at: String,
     from_id: String,
     to_id: String,
     message_type: String,
@@ -21,12 +23,10 @@ struct ResponseMessage {
     content: String,
 }
 
-static mut USERNAME: String = String::new();
-
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
-    let username = args[1].clone(); // Clone the username
+    let USERNAME = args[1].clone(); // Clone the username
     // Connect to the WebSocket server
     // let username = "user";
     // let password = "password";
@@ -37,36 +37,22 @@ async fn main() {
     request.headers_mut().insert(
         "Authorization",
         // format!("{}", credentials).parse().unwrap(),
-        format!("{}", username).parse().unwrap()
+        format!("{}", &USERNAME).parse().unwrap(),
     );
-    let (ws_stream, _) = connect_async(request).await.expect("Failed to connect to WebSocket server");
+    let (ws_stream, _) = connect_async(request)
+        .await
+        .expect("Failed to connect to WebSocket server");
 
     let (mut write, mut read) = ws_stream.split();
 
-    // Send a JSON message to the server
-    // let outgoing_message = IncomingMessage {
-    //     from_id: username.to_string(),
-    //     to_id: username.to_string(),
-    //     message_type: "text".to_string(),
-    //     content: "Hello, server!".to_string(),
-    // };
-
-    // let serialized_msg = serde_json::to_string(&outgoing_message).unwrap();
-    // write.send(Message::Text(serialized_msg)).await.expect("Failed to send message");
-    //
-    // let serialized_msg = serde_json::to_string(&outgoing_message).unwrap();
-    // write.send(Message::Text(serialized_msg)).await.expect("Failed to send message");
-
-    // Wait for a response from the server
     // Task to handle receiving messages from the server
     let receive_task = tokio::spawn(async move {
         while true {
             if let Some(Ok(message)) = read.next().await {
                 if let Message::Text(text) = message {
                     // Deserialize the response JSON
-                    if let Ok(response) = serde_json::from_str::<ResponseMessage>(&text) {
+                    if let Ok(response) = serde_json::from_str::<IncomingMessage>(&text) {
                         println!("Received from server: {:?}", response);
-
                     }
                 }
             }
@@ -79,12 +65,22 @@ async fn main() {
         let mut lines = stdin.lines();
 
         while let Ok(line) = lines.next_line().await {
-            if line.is_none() {continue;}
+            if line.is_none() {
+                continue;
+            }
+
+            let line = line.unwrap();
+            let line_args: Vec<&str> = line.split_whitespace().collect();
+            let receiver_username = String::from(line_args[0]);
+            let message = String::from(line_args[1]);
+            let timestamp: DateTime<Utc> = Utc::now();
+
             let outgoing_message = IncomingMessage {
-                from_id: username.to_string(),
-                to_id: username.to_string(),
+                sent_at: timestamp.to_rfc3339(),
+                from_id: USERNAME.clone(),
+                to_id: receiver_username.to_string(),
                 message_type: "text".to_string(),
-                content: line.unwrap().clone(), // Send the user's input as the content
+                content: message.to_string(), // Send the user's input as the content
             };
 
             let serialized_msg = serde_json::to_string(&outgoing_message).unwrap();
