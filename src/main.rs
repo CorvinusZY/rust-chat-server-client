@@ -70,9 +70,10 @@ async fn main() {
             }
 
             let line = line.unwrap();
-            let line_args: Vec<&str> = line.split_whitespace().collect();
-            let receiver_username = String::from(line_args[0]);
-            let message = String::from(line_args[1]);
+            //let line_args: Vec<&str> = line.split_whitespace().collect();
+            let (receiver_username, message) = line.split_once(char::is_whitespace).unwrap();
+            // let receiver_username = String::from(line_args[0]);
+            // let message = String::from(line_args[1]);
             let timestamp: DateTime<Utc> = Utc::now();
 
             let outgoing_message = IncomingMessage {
