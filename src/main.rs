@@ -11,8 +11,8 @@ use url::Url;
 #[derive(Serialize, Deserialize, Debug)]
 struct IncomingMessage {
     sent_at: String,
-    from_id: String,
-    to_id: String,
+    sender: String,
+    receiver: String,
     message_type: String,
     content: String,
 }
@@ -27,10 +27,10 @@ struct ResponseMessage {
 async fn main() {
     let args: Vec<String> = env::args().collect();
     let USERNAME = args[1].clone(); // Clone the username
-    // Connect to the WebSocket server
-    // let username = "user";
-    // let password = "password";
-    // let credentials = format!("{}:{}", username, password);
+                                    // Connect to the WebSocket server
+                                    // let username = "user";
+                                    // let password = "password";
+                                    // let credentials = format!("{}:{}", username, password);
     let url = Url::parse("ws://127.0.0.1:3030/ws").unwrap();
     // Create the WebSocket request with the Authorization header
     let mut request = url.into_client_request().expect("Invalid WebSocket URL");
@@ -77,8 +77,8 @@ async fn main() {
 
             let outgoing_message = IncomingMessage {
                 sent_at: timestamp.to_rfc3339(),
-                from_id: USERNAME.clone(),
-                to_id: receiver_username.to_string(),
+                sender: USERNAME.clone(),
+                receiver: receiver_username.to_string(),
                 message_type: "text".to_string(),
                 content: message.to_string(), // Send the user's input as the content
             };
