@@ -1,5 +1,8 @@
 # rust-chat-server-client
 
+### Video Demo
+https://youtu.be/wlSNHgB19pU
+
 ### Test
 ***
 Make sure the server is running before connecting the clients
