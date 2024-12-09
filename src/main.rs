@@ -1,4 +1,6 @@
-use chrono::{DateTime, Utc};
+use base64;
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -10,7 +12,7 @@ use url::Url;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct IncomingMessage {
-    sent_at: String,
+    //sent_at: String,
     sender: String,
     receiver: String,
     message_type: String,
@@ -31,7 +33,13 @@ async fn main() {
                                     // let username = "user";
                                     // let password = "password";
                                     // let credentials = format!("{}:{}", username, password);
-    let url = Url::parse("ws://127.0.0.1:3030/ws").unwrap();
+    let PASSWORD = args[2].clone();
+    let encoded_password = STANDARD.encode(PASSWORD);
+    let url_str = format!(
+        "ws://127.0.0.1:3030/ws?name={}&password={}",
+        &USERNAME, &encoded_password
+    );
+    let url = Url::parse(&url_str).unwrap();
     // Create the WebSocket request with the Authorization header
     let mut request = url.into_client_request().expect("Invalid WebSocket URL");
     request.headers_mut().insert(
@@ -39,6 +47,7 @@ async fn main() {
         // format!("{}", credentials).parse().unwrap(),
         format!("{}", &USERNAME).parse().unwrap(),
     );
+
     let (ws_stream, _) = connect_async(request)
         .await
         .expect("Failed to connect to WebSocket server");
@@ -52,7 +61,7 @@ async fn main() {
                 if let Message::Text(text) = message {
                     // Deserialize the response JSON
                     if let Ok(response) = serde_json::from_str::<IncomingMessage>(&text) {
-                        println!("Received from server: {:?}", response);
+                        println!("message from {:?}: {:?}", response.sender, response.content);
                     }
                 }
             }
@@ -70,14 +79,11 @@ async fn main() {
             }
 
             let line = line.unwrap();
-            //let line_args: Vec<&str> = line.split_whitespace().collect();
             let (receiver_username, message) = line.split_once(char::is_whitespace).unwrap();
-            // let receiver_username = String::from(line_args[0]);
-            // let message = String::from(line_args[1]);
-            let timestamp: DateTime<Utc> = Utc::now();
+            //let timestamp: DateTime<Utc> = Utc::now();
 
             let outgoing_message = IncomingMessage {
-                sent_at: timestamp.to_rfc3339(),
+                //sent_at: timestamp.to_rfc3339(),
                 sender: USERNAME.clone(),
                 receiver: receiver_username.to_string(),
                 message_type: "text".to_string(),
